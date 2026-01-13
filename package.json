@@ -1,0 +1,46 @@
+{
+  "name": "Contest-Platform",
+  "private": true,
+  "workspaces": {
+    "packages": [
+      "apps/*",
+      "packages/*"
+    ],
+    "catalog": {
+      "dotenv": "^17.2.2",
+      "zod": "^4.1.13",
+      "typescript": "^5",
+      "@types/bun": "^1.3.4"
+    }
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --filter '*' dev",
+    "build": "bun run --filter '*' build",
+    "check-types": "bun run --filter '*' check-types",
+    "dev:native": "bun run --filter native dev",
+    "dev:web": "bun run --filter web dev",
+    "dev:server": "bun run --filter server dev",
+    "db:push": "bun run --filter @Contest-Platform/db db:push",
+    "db:studio": "bun run --filter @Contest-Platform/db db:studio",
+    "db:generate": "bun run --filter @Contest-Platform/db db:generate",
+    "db:migrate": "bun run --filter @Contest-Platform/db db:migrate",
+    "db:start": "bun run --filter @Contest-Platform/db db:start",
+    "db:watch": "bun run --filter @Contest-Platform/db db:watch",
+    "db:stop": "bun run --filter @Contest-Platform/db db:stop",
+    "db:down": "bun run --filter @Contest-Platform/db db:down",
+    "check": "biome check --write ."
+  },
+  "dependencies": {
+    "@Contest-Platform/env": "workspace:*",
+    "dotenv": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@Contest-Platform/config": "workspace:*",
+    "@biomejs/biome": "^2.2.0",
+    "@types/bun": "catalog:",
+    "typescript": "catalog:"
+  },
+  "packageManager": "bun@1.2.20"
+}

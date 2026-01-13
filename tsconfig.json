@@ -1,0 +1,3 @@
+{
+  "extends": "@Contest-Platform/config/tsconfig.base.json"
+}
