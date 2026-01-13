@@ -1,10 +1,23 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../generated"
+  provider     = "prisma-client"
+  output       = "../generated"
   moduleFormat = "esm"
-  runtime = "bun"
+  runtime      = "bun"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+enum Role {
+  creator
+  contestee
+}
+
+model User {
+  id       Int    @id @default(autoincrement())
+  name     String
+  email    String @unique
+  password String
+  role     Role   @default(contestee)
 }
