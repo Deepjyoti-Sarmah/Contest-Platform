@@ -6,8 +6,9 @@ import {
   requireRole,
 } from "@/middleware/auth.middleware";
 import { createContestSchema } from "@/schemas/contest.schema";
-import { sendError, sendSuccess } from "@/utils/response";
 import { createMcqSchema, submitMcqSchema } from "@/schemas/mcq.schema";
+import { sendError, sendSuccess } from "@/utils/response";
+import { createDsaProblemSchema } from "@/schemas/dsa.schema";
 
 const router = Router();
 
@@ -267,6 +268,83 @@ router.post(
       );
     } catch (error) {
       console.error("Sumbit MCQ error:", error);
+      sendError(res, "INTERNAL_SERVER_ERROR", 500);
+    }
+  },
+);
+
+router.post(
+  "/:contestId/dsa",
+  requireRole(["contestee"]),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const contestId = Number.parseInt(req.params.contestId as string);
+
+      if (Number.isNaN(contestId)) {
+        sendError(res, "INVALID_REQUEST", 400);
+        return;
+      }
+
+      const parsed = createDsaProblemSchema.safeParse(req.body);
+
+      if (!parsed.success) {
+        sendError(res, "INVALID_REQUEST", 400);
+        return;
+      }
+
+      const contest = await prisma.contest.findUnique({
+        where: { id: contestId },
+      });
+
+      if (!contest) {
+        sendError(res, "CONTEST_NOT_FOUND", 404);
+        return;
+      }
+
+      if (contest.creatorId !== req.user?.userId) {
+        sendError(res, "FORBIDDEN", 403);
+        return;
+      }
+
+      const {
+        title,
+        description,
+        tags,
+        points,
+        timeLimit,
+        memoryLimit,
+        testCases,
+      } = parsed.data;
+
+      const problem = await prisma.dsaProblem.create({
+        data: {
+          contestId,
+          title,
+          description,
+          tags,
+          points,
+          timeLimit,
+          memoryLimit,
+          testCases: {
+            create: testCases.map((tc) => ({
+              input: tc.input,
+              expectedOutput: tc.expectedOutput,
+              isHidden: tc.isHidden,
+            })),
+          },
+        },
+      });
+
+      sendSuccess(
+        res,
+        {
+          id: problem.id,
+          contestId: problem.contestId,
+        },
+        201,
+      );
+    } catch (error) {
+      console.error("Create DSA problem error:", error);
       sendError(res, "INTERNAL_SERVER_ERROR", 500);
     }
   },
