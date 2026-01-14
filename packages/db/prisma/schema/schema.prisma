@@ -15,9 +15,113 @@ enum Role {
 }
 
 model User {
-  id       Int    @id @default(autoincrement())
-  name     String
-  email    String @unique
-  password String
-  role     Role   @default(contestee)
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(contestee)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  contests       Contest[]       @relation("ContestCreator")
+  mcqSubmissions McqSubmission[]
+  dsaSubmissions DsaSubmission[]
+
+  @@map("users")
+}
+
+model Contest {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String
+  creatorId   Int      @map("creator_id")
+  startTime   DateTime @map("start_time")
+  endTime     DateTime @map("end_time")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  creator      User          @relation("ContestCreator", fields: [creatorId], references: [id])
+  mcqQuestions McqQuestion[]
+  dsaProblems  DsaProblem[]
+
+  @@map("contests")
+}
+
+model McqQuestion {
+  id                 Int      @id @default(autoincrement())
+  contestId          Int      @map("contest_id")
+  questionText       String   @map("question_text")
+  options            Json
+  correctOptionIndex Int      @map("correct_option_index")
+  points             Int      @default(1)
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  contest        Contest         @relation(fields: [contestId], references: [id])
+  mcqSubmissions McqSubmission[]
+
+  @@map("mcq_questions")
+}
+
+model McqSubmission {
+  id                  Int      @id @default(autoincrement())
+  userId              Int      @map("user_id")
+  questionId          Int      @map("question_id")
+  selectedOptionIndex Int      @map("selected_option_index")
+  isCorrect           Boolean  @map("is_correct")
+  pointsEarned        Int      @default(0) @map("points_earned")
+  submittedAt         DateTime @default(now()) @map("submitted_at")
+
+  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question McqQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, questionId])
+  @@map("mcq_submissions")
+}
+
+model DsaProblem {
+  id          Int      @id @default(autoincrement())
+  contestId   Int      @map("contest_id")
+  title       String
+  description String
+  tags        Json
+  points      Int      @default(100)
+  timeLimit   Int      @default(2000) @map("time_limit")
+  memoryLimit Int      @default(256) @map("memory_limit")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  contest        Contest         @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  testCases      TestCase[]
+  dsaSubmissions DsaSubmission[]
+
+  @@map("dsa_problems")
+}
+
+model TestCase {
+  id             Int      @id @default(autoincrement())
+  problemId      Int      @map("problem_id")
+  input          String
+  expectedOutput String   @map("expected_output")
+  isHidden       Boolean  @default(false) @map("is_hidden")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  problem DsaProblem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@map("test_cases")
+}
+
+model DsaSubmission {
+  id              Int      @id @default(autoincrement())
+  userId          Int      @map("user_id")
+  problemId       Int      @map("problem_id")
+  code            String
+  language        String   @db.VarChar(50)
+  status          String   @db.VarChar(50)
+  pointsEarned    Int      @default(0) @map("points_earned")
+  testCasesPassed Int      @default(0) @map("test_case_passed")
+  totalTestCases  Int      @default(0) @map("total_test_cases")
+  executionTime   Int      @map("execution_time")
+  submittedAt     DateTime @default(now()) @map("submitted_at")
+
+  user    User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problem DsaProblem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@map("dsa_submissions")
 }
