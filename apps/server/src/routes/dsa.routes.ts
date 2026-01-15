@@ -1,13 +1,13 @@
+import prisma from "@Contest-Platform/db";
+import { type Response, Router } from "express";
 import {
+  type AuthRequest,
   authenticate,
   requireRole,
-  type AuthRequest,
 } from "@/middleware/auth.middleware";
 import { submitDsaSchema } from "@/schemas/dsa.schema";
 import { executeCode } from "@/utils/codeExecutor";
 import { sendError, sendSuccess } from "@/utils/response";
-import prisma from "@Contest-Platform/db";
-import { Router, type Response } from "express";
 
 const router = Router();
 
