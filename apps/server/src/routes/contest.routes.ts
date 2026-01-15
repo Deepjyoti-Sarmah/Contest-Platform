@@ -350,4 +350,128 @@ router.post(
   },
 );
 
+router.get(
+  "/:contestId/leaderboard",
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const constestId = Number.parseInt(req.params.contestId as string);
+
+      if (Number.isNaN(constestId)) {
+        sendError(res, "INVALID_REQUEST", 400);
+        return;
+      }
+
+      const contest = await prisma.contest.findUnique({
+        where: { id: constestId },
+        include: {
+          mcqQuestions: true,
+          dsaProblems: true,
+        },
+      });
+
+      if (!contest) {
+        sendError(res, "CONTEST_NOT_FOUND", 404);
+        return;
+      }
+
+      const mcqQuestionIds = contest.mcqQuestions.map((q) => q.id);
+
+      const mcqSubmissions = await prisma.mcqSubmission.findMany({
+        where: {
+          questionId: { in: mcqQuestionIds },
+        },
+        include: {
+          user: true,
+        },
+      });
+
+      const dsaProblemIds = contest.dsaProblems.map((p) => p.id);
+
+      const dsaSubmissions = await prisma.dsaSubmission.findMany({
+        where: {
+          problemId: { in: dsaProblemIds },
+        },
+        include: {
+          user: true,
+        },
+      });
+
+      const userScores = new Map<
+        number,
+        { userId: number; name: string; totalPoints: number }
+      >();
+
+      for (const submission of mcqSubmissions) {
+        if (!userScores.has(submission.userId)) {
+          userScores.set(submission.userId, {
+            userId: submission.userId,
+            name: submission.user.name,
+            totalPoints: 0,
+          });
+        }
+
+        const userScore = userScores.get(submission.userId);
+        userScore!.totalPoints += submission.pointsEarned;
+      }
+
+      const dsaMaxPoints = new Map<string, number>();
+      for (const submission of dsaSubmissions) {
+        const key = `${submission.userId}-${submission.problemId}`;
+        const currentMax = dsaMaxPoints.get(key) || 0;
+        dsaMaxPoints.set(key, Math.max(currentMax, submission.pointsEarned));
+      }
+
+      for (const submission of dsaSubmissions) {
+        const key = `${submission.userId}-${submission.problemId}`;
+        const maxPoints = dsaMaxPoints.get(key)!;
+
+        if (!userScores.has(submission.userId)) {
+          userScores.set(submission.userId, {
+            userId: submission.userId,
+            name: submission.user.name,
+            totalPoints: 0,
+          });
+        }
+
+        const userScore = userScores.get(submission.userId)!;
+
+        const alreadyCounted = Array.from(dsaMaxPoints.entries())
+          .filter(([k]) => k.startsWith(`${submission.userId}-`))
+          .some(([k, v]) => k < key && v > 0);
+
+        if (submission.pointsEarned === maxPoints && !alreadyCounted) {
+          userScore.totalPoints += maxPoints;
+          dsaMaxPoints.delete(key);
+        }
+      }
+
+      const leaderboardArray = Array.from(userScores.values()).sort(
+        (a, b) => b.totalPoints - a.totalPoints,
+      );
+
+      const leaderboard = leaderboardArray.map((user, index) => {
+        let rank = index + 1;
+        if (
+          index > 0 &&
+          user.totalPoints === leaderboardArray[index - 1]?.totalPoints
+        ) {
+          rank = (leaderboard[index - 1] as any).rank;
+        }
+
+        return {
+          userId: user.userId,
+          name: user.name,
+          totalPoints: user.totalPoints,
+          rank,
+        };
+      });
+
+      sendSuccess(res, leaderboard, 200);
+    } catch (error) {
+      console.error("Get leaderboard error:", error);
+      sendError(res, "INTERNAL_SERVER_ERROR", 500);
+    }
+  },
+);
+
 export default router;
